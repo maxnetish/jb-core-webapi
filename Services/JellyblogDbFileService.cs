@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using MongoDB.Driver;
 using MongoDB.Bson;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using jb_core_webapi.Models;
 
 namespace jb_core_webapi.Services
@@ -9,29 +10,46 @@ namespace jb_core_webapi.Services
     public class JellyblogDbFileService
     {
         private readonly IMongoCollection<File> _files;
+        private IConfiguration _config;
         public JellyblogDbFileService(IConfiguration config)
         {
             var client = new MongoClient(config.GetConnectionString("JellyblogDb"));
             var database = client.GetDatabase("jellyblog");
             this._files = database.GetCollection<File>("fs.files");
+            this._config = config;
         }
 
         public List<File> Get()
         {
-            // ProjectionDefinition<BsonDocument> projection = "{metadata: 0}";
             return _files.Find(f => true).ToList();
         }
 
-        public PaginationResponse<File> Get(FileFindCriteria request)
+        public async Task<PaginationResponse<File>> Get(FileFindCriteria request)
+        {
+            var filter = JellyblogDbFileService._mapFileFindCriteriaToFilterDefinition(request);
+            var itemsPerPage = this._config.GetValue<int>("PaginationItemsPerPage");
+            var limit = itemsPerPage + 1;
+            var skip = (request.Page - 1) * itemsPerPage;
+            // List<File> foundDocs;
+            bool hasMore;
+
+            var foundDocs = await _files.Find(filter)
+                .Skip(skip)
+                .Limit(limit)
+                .ToListAsync();
+            hasMore = foundDocs.Count > itemsPerPage;
+            if (foundDocs.Count > itemsPerPage)
+            {
+                foundDocs.RemoveRange(itemsPerPage, foundDocs.Count - itemsPerPage);
+            }
+
+            return new PaginationResponse<File>(Items: foundDocs, HasMore: hasMore);
+        }
+
+        private static FilterDefinition<File> _mapFileFindCriteriaToFilterDefinition(FileFindCriteria request)
         {
             var builder = Builders<File>.Filter;
             var filter = builder.Empty;
-            var limit = 10 + 1;
-            var skip = (request.Page - 1) * 10;
-            List<File> foundDocs;
-            bool hasMore;
-
-
 
             if (!string.IsNullOrEmpty(request.Context))
             {
@@ -58,17 +76,7 @@ namespace jb_core_webapi.Services
                 filter = filter & builder.Lte("uploadDate", request.DateTo);
             }
 
-            foundDocs = _files.Find(filter)
-                .Skip(skip)
-                .Limit(limit)
-                .ToList();
-            hasMore = foundDocs.Count > 10;
-            if (foundDocs.Count > 10)
-            {
-                foundDocs.RemoveRange(10, foundDocs.Count - 10);
-            }
-
-            return new PaginationResponse<File>(Items: foundDocs, HasMore: hasMore);
+            return filter;
         }
     }
 }

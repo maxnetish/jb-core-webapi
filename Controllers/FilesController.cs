@@ -33,9 +33,9 @@ namespace jb_core_webapi.Controllers
         // }
 
         [HttpGet]
-        public ActionResult<PaginationResponse<File>> Get([FromQuery] FileFindCriteria criteria)
+        public async Task<ActionResult<PaginationResponse<File>>> Get([FromQuery] FileFindCriteria criteria)
         {
-            return this._fileService.Get(criteria);
+            return await this._fileService.Get(criteria);
         }
 
         /*
