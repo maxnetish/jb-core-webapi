@@ -13,9 +13,9 @@ namespace jb_core_webapi.Controllers
     [ApiController]
     public class FilesController : ControllerBase
     {
-        private readonly JellyblogDbFileService _fileService;
+        private readonly IJellyblogDbFileService _fileService;
 
-        public FilesController(JellyblogDbFileService fileService)
+        public FilesController(IJellyblogDbFileService fileService)
         {
             this._fileService = fileService;
         }

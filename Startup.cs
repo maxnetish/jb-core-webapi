@@ -1,16 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using jb_core_webapi.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using jb_core_webapi.Services;
 
 namespace jb_core_webapi
 {
@@ -26,7 +19,9 @@ namespace jb_core_webapi
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddScoped<JellyblogDbFileService>();
+            services.AddSingleton<IJellyblogDbContext, JellyblogDbContext>();
+            services.AddSingleton<IJellyblogDbFileService, JellyblogDbFileService>();
+            services.AddSingleton<IJellyblogDbUserService, JellyblogDbUserService>();
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
         }
 

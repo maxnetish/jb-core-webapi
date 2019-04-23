@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.489
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "jb-core-webapi", "jb-core-webapi.csproj", "{0A6BD331-DE13-4811-BA63-EFCC32F23CEF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0A6BD331-DE13-4811-BA63-EFCC32F23CEF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0A6BD331-DE13-4811-BA63-EFCC32F23CEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0A6BD331-DE13-4811-BA63-EFCC32F23CEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0A6BD331-DE13-4811-BA63-EFCC32F23CEF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {EB181D6A-1BB0-4A16-9BB0-8373B7CD7CC9}
+	EndGlobalSection
+EndGlobal

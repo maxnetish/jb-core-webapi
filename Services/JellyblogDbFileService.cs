@@ -1,27 +1,39 @@
+using jb_core_webapi.Models;
 using Microsoft.Extensions.Configuration;
-using MongoDB.Driver;
 using MongoDB.Bson;
+using MongoDB.Driver;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using jb_core_webapi.Models;
 
 namespace jb_core_webapi.Services
 {
-    public class JellyblogDbFileService
+    public interface IJellyblogDbFileService
     {
-        private readonly IMongoCollection<File> _files;
-        private IConfiguration _config;
-        public JellyblogDbFileService(IConfiguration config)
+        Task<PaginationResponse<File>> Get(FileFindCriteria request);
+    }
+
+    public class JellyblogDbFileService : IJellyblogDbFileService
+    {
+        private readonly IConfiguration _config;
+        private readonly IJellyblogDbContext _context;
+
+        public JellyblogDbFileService(IConfiguration config, IJellyblogDbContext context)
         {
-            var client = new MongoClient(config.GetConnectionString("JellyblogDb"));
-            var database = client.GetDatabase("jellyblog");
-            this._files = database.GetCollection<File>("fs.files");
-            this._config = config;
+            _config = config;
+            _context = context;
         }
 
-        public List<File> Get()
+        private IMongoCollection<File> _files = null;
+        protected IMongoCollection<File> Files
         {
-            return _files.Find(f => true).ToList();
+            get
+            {
+                if (_files == null)
+                {
+                    _files = this._context.Database.GetCollection<File>("fs.files");
+                }
+                return _files;
+            }
         }
 
         public async Task<PaginationResponse<File>> Get(FileFindCriteria request)
@@ -33,7 +45,7 @@ namespace jb_core_webapi.Services
             // List<File> foundDocs;
             bool hasMore;
 
-            var foundDocs = await _files.Find(filter)
+            var foundDocs = await this.Files.Find(filter)
                 .Skip(skip)
                 .Limit(limit)
                 .ToListAsync();
