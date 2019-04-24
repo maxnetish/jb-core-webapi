@@ -1,4 +1,5 @@
 ﻿using jb_core_webapi.Models;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using MongoDB.Driver;
 using System.Collections.Generic;
@@ -12,7 +13,10 @@ namespace jb_core_webapi.Services
     public interface IJellyblogDbUserService
     {
         Task<User> Get(string userName);
-        Task<List<User>> Get();
+        Task<List<UserInfo>> Get();
+        Task Add(User user);
+        Task Remove(string id);
+        Task<IActionResult> NewPassword(UserNewPassword userNewPassword);
         Task<ClaimsIdentity> GetClaimsIdentity(UserCredentials credentials);
     }
 
@@ -43,6 +47,35 @@ namespace jb_core_webapi.Services
             }
         }
 
+        public async Task Add(User user)
+        {
+            user.Password = _textToHash(user.Password);
+            await this.Users.InsertOneAsync(user);
+        }
+
+        public async Task Remove(string id)
+        {
+            var filter = Builders<User>.Filter.Eq("_id", id);
+            await this.Users.DeleteOneAsync(filter);
+        }
+
+        public async Task<IActionResult> NewPassword(UserNewPassword userNewPassword)
+        {
+            var identity = await this.GetClaimsIdentity(new UserCredentials
+            {
+                Password = userNewPassword.OldPassword,
+                Username = userNewPassword.Username
+            });
+            if(identity==null)
+            {
+                return new UnauthorizedResult();
+            }
+            var filter = Builders<User>.Filter.Eq("username", userNewPassword.Username);
+            var update = Builders<User>.Update.Set("password", _textToHash(userNewPassword.NewPassword));
+            await this.Users.UpdateOneAsync(filter, update);
+            return new OkResult();
+        }
+
         public async Task<User> Get(string username)
         {
             var criteria = Builders<User>.Filter
@@ -51,7 +84,7 @@ namespace jb_core_webapi.Services
 
             if (foundDoc == null && username == "admin")
             {
-                // if no admin user - use temporaraly admin account with password hash provided from config
+                // if no admin user - add it
                 var adminPasswordFromConfig = this._config.GetValue<string>("AdminPassword");
                 if (!string.IsNullOrEmpty(adminPasswordFromConfig))
                 {
@@ -61,15 +94,20 @@ namespace jb_core_webapi.Services
                         Role = UserRole.admin,
                         UserName = "admin"
                     };
+                    await this.Users.InsertOneAsync(foundDoc);
                 }
             }
 
             return foundDoc;
         }
 
-        public async Task<List<User>> Get()
+        public async Task<List<UserInfo>> Get()
         {
-            var foundDocs = await this.Users.Find(d => true).ToListAsync();
+            ProjectionDefinition<User, UserInfo> projection = "{_id: 1, username: 1, role: 1}";
+            var foundDocs = await this.Users
+                .Find(d => true)
+                .Project(projection)
+                .ToListAsync();
             return foundDocs;
         }
 

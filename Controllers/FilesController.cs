@@ -1,11 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using MongoDB.Bson;
-using jb_core_webapi.Services;
 using jb_core_webapi.Models;
+using jb_core_webapi.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace jb_core_webapi.Controllers
 {
@@ -32,6 +29,7 @@ namespace jb_core_webapi.Controllers
         // return new PaginationResponse<File>(Items: listOfFiles, HasMore: false);
         // }
 
+        [Authorize(Roles = "admin")]
         [HttpGet]
         public async Task<ActionResult<PaginationResponse<File>>> Get([FromQuery] FileFindCriteria criteria)
         {
