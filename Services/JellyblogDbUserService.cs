@@ -18,6 +18,7 @@ namespace jb_core_webapi.Services
         Task Remove(string id);
         Task<IActionResult> NewPassword(UserNewPassword userNewPassword);
         Task<ClaimsIdentity> GetClaimsIdentity(UserCredentials credentials);
+        Task<ClaimsIdentity> GetClaimsIdentity(string userName);
     }
 
     public class JellyblogDbUserService : IJellyblogDbUserService
@@ -66,7 +67,7 @@ namespace jb_core_webapi.Services
                 Password = userNewPassword.OldPassword,
                 Username = userNewPassword.Username
             });
-            if(identity==null)
+            if (identity == null)
             {
                 return new UnauthorizedResult();
             }
@@ -127,6 +128,23 @@ namespace jb_core_webapi.Services
             }
 
 
+            return _claimsIdentityFromUser(user);
+        }
+
+        public async Task<ClaimsIdentity> GetClaimsIdentity(string userName)
+        {
+            var user = await this.Get(userName);
+            if (user == null)
+            {
+                // not found by username
+                return null;
+            }
+
+            return _claimsIdentityFromUser(user);
+        }
+
+        private static ClaimsIdentity _claimsIdentityFromUser(User user)
+        {
             var claims = new List<Claim>()
             {
                 new Claim(ClaimsIdentity.DefaultNameClaimType, user.UserName),

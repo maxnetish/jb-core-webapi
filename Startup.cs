@@ -1,11 +1,10 @@
 ﻿using jb_core_webapi.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -28,6 +27,7 @@ namespace jb_core_webapi
             services.AddSingleton<IJellyblogDbContext, JellyblogDbContext>();
             services.AddSingleton<IJellyblogDbFileService, JellyblogDbFileService>();
             services.AddSingleton<IJellyblogDbUserService, JellyblogDbUserService>();
+            services.AddSingleton<IJellybolgDbRefreshTokenService, JellybolgDbRefreshTokenService>();
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
