@@ -2,14 +2,14 @@ using jb_core_webapi.Models;
 using Microsoft.Extensions.Configuration;
 using MongoDB.Bson;
 using MongoDB.Driver;
-using System.Collections.Generic;
+using MongoDB.Driver.GridFS;
 using System.Threading.Tasks;
 
 namespace jb_core_webapi.Services
 {
     public interface IJellyblogDbFileService
     {
-        Task<PaginationResponse<File>> Get(FileFindCriteria request);
+        Task<PaginationResponse<GridFSFileInfo>> Get(FileFindCriteria request);
     }
 
     public class JellyblogDbFileService : IJellyblogDbFileService
@@ -23,39 +23,61 @@ namespace jb_core_webapi.Services
             _context = context;
         }
 
-        private IMongoCollection<File> _files = null;
-        protected IMongoCollection<File> Files
+        private GridFSBucket _bucket;
+        protected GridFSBucket Bucket
         {
             get
             {
-                if (_files == null)
+                if (_bucket == null)
                 {
-                    _files = this._context.Database.GetCollection<File>("fs.files");
+                    _bucket = new GridFSBucket(this._context.Database);
                 }
-                return _files;
+                return _bucket;
             }
         }
 
-        public async Task<PaginationResponse<File>> Get(FileFindCriteria request)
-        {
-            var filter = JellyblogDbFileService._mapFileFindCriteriaToFilterDefinition(request);
-            var itemsPerPage = this._config.GetValue<int>("PaginationItemsPerPage");
-            var limit = itemsPerPage + 1;
-            var skip = (request.Page - 1) * itemsPerPage;
-            // List<File> foundDocs;
-            bool hasMore;
+        //private IMongoCollection<File> _files = null;
+        //protected IMongoCollection<File> Files
+        //{
+        //    get
+        //    {
+        //        if (_files == null)
+        //        {
+        //            _files = this._context.Database.GetCollection<File>("fs.files");
+        //        }
+        //        return _files;
+        //    }
+        //}
 
-            var foundDocs = await this.Files.Find(filter)
-                .Skip(skip)
-                .Limit(limit)
-                .ToListAsync();
-            hasMore = foundDocs.Count > itemsPerPage;
-            if (foundDocs.Count > itemsPerPage)
+        public async Task<PaginationResponse<GridFSFileInfo>> Get(FileFindCriteria request)
+        {
+            var filter = Builders<GridFSFileInfo>.Filter.Empty;
+
+            using (var cursor = await Bucket.FindAsync(filter))
             {
-                foundDocs.RemoveRange(itemsPerPage, foundDocs.Count - itemsPerPage);
+                var items = await cursor.ToListAsync();
+                return new PaginationResponse<GridFSFileInfo>(Items: items, HasMore: false);
             }
 
-            return new PaginationResponse<File>(Items: foundDocs, HasMore: hasMore);
+
+            //var filter = JellyblogDbFileService._mapFileFindCriteriaToFilterDefinition(request);
+            //var itemsPerPage = this._config.GetValue<int>("PaginationItemsPerPage");
+            //var limit = itemsPerPage + 1;
+            //var skip = (request.Page - 1) * itemsPerPage;
+            //// List<File> foundDocs;
+            //bool hasMore;
+
+            //var foundDocs = await this.Files.Find(filter)
+            //    .Skip(skip)
+            //    .Limit(limit)
+            //    .ToListAsync();
+            //hasMore = foundDocs.Count > itemsPerPage;
+            //if (foundDocs.Count > itemsPerPage)
+            //{
+            //    foundDocs.RemoveRange(itemsPerPage, foundDocs.Count - itemsPerPage);
+            //}
+
+            //return new PaginationResponse<File>(Items: foundDocs, HasMore: hasMore);
         }
 
         private static FilterDefinition<File> _mapFileFindCriteriaToFilterDefinition(FileFindCriteria request)

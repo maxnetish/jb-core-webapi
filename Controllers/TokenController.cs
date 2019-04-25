@@ -37,8 +37,7 @@ namespace jb_core_webapi.Controllers
         [Route("refresh")]
         public async Task<IActionResult> Token()
         {
-            string refreshTokenFromCookie = null;
-            if (!this.HttpContext.Request.Cookies.TryGetValue(this.authRefreshTokenCookieName, out refreshTokenFromCookie))
+            if (!this.HttpContext.Request.Cookies.TryGetValue(this.authRefreshTokenCookieName, out string refreshTokenFromCookie))
             {
                 // no refresh token
                 return new UnauthorizedResult();

@@ -3,6 +3,7 @@ using jb_core_webapi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
+using MongoDB.Driver.GridFS;
 
 namespace jb_core_webapi.Controllers
 {
@@ -31,9 +32,11 @@ namespace jb_core_webapi.Controllers
 
         [Authorize(Roles = "admin")]
         [HttpGet]
-        public async Task<ActionResult<PaginationResponse<File>>> Get([FromQuery] FileFindCriteria criteria)
+        public async Task<ActionResult<PaginationResponse<GridFSFileInfo>>> Get([FromQuery] FileFindCriteria criteria)
         {
-            return await this._fileService.Get(criteria);
+            // FIXME GridFSFileInfo curly serializes. We have to use more simple model to pass
+            var result = await this._fileService.Get(criteria);
+            return result;
         }
 
         /*
