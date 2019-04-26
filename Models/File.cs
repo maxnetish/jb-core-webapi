@@ -1,60 +1,71 @@
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
+using Newtonsoft.Json;
+using System.Collections.Generic;
 
 namespace jb_core_webapi.Models
 {
-    public class FileMetadata
+    public class JbFileMetadata
     {
-        [BsonElement("context")]
+        [JsonProperty("context")]
         public string Context { get; set; }
 
-        [BsonElement("postId")]
-        [BsonRepresentation(BsonType.ObjectId)]
+        [JsonProperty("postId")]
         public string PostId { get; set; }
 
-        [BsonElement("originalName")]
+        [JsonProperty("originalName")]
         public string OriginalName { get; set; }
 
-        [BsonElement("width")]
-        public int? Width { get; set; }
+        [JsonProperty("width")]
+        public string Width { get; set; }
 
-        [BsonElement("height")]
-        public int? Height { get; set; }
+        [JsonProperty("height")]
+        public string Height { get; set; }
 
-        [BsonElement("description")]
+        [JsonProperty("description")]
         public string Description { get; set; }
 
-        [BsonElement("srcsetTag")]
+        [JsonProperty("srcsetTag")]
         public string SrcSetTag { get; set; }
+
+        public Dictionary<string, object> ToDictionary()
+        {
+            var result = new Dictionary<string, object>(7);
+            result.Add("context", this.Context);
+            result.Add("postId", this.PostId);
+            result.Add("originalName", OriginalName);
+            result.Add("width", Width);
+            result.Add("height", Height);
+            result.Add("description", Description);
+            result.Add("srcsetTag", SrcSetTag);
+            return result;
+        }
     }
 
     // [BsonIgnoreExtraElements]
-    public class File
+    public class JbFileInfo
     {
-        [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
+
         public string Id { get; set; }
 
-        [BsonElement("filename")]
+        [JsonProperty("filename")]
         public string Filename { get; set; }
 
-        [BsonElement("uploadDate")]
-        // [BsonIgnore]
+        [JsonProperty("uploadDate")]
         public System.DateTime UploadDate { get; set; }
 
-        [BsonElement("length")]
+        [JsonProperty("length")]
         public long Length { get; set; }
 
-        [BsonElement("chunkSize")]
+        [JsonProperty("chunkSize")]
         public long ChunkSize { get; set; }
 
-        [BsonElement("md5")]
-        public string Md5 { get; set; }
-
-        [BsonElement("contentType")]
+        [JsonProperty("contentType")]
         public string ContentType { get; set; }
 
-        [BsonElement("metadata")]
-        public FileMetadata Metadata { get; set; }
+        // TODO: add filling in JellyblogDbFileService
+        [JsonProperty("url")]
+        public string Url { get; set; }
+
+        [JsonProperty("metadata")]
+        public JbFileMetadata Metadata { get; set; }
     }
 }

@@ -4,12 +4,15 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using MongoDB.Driver.GridFS;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace jb_core_webapi.Services
 {
     public interface IJellyblogDbFileService
     {
-        Task<PaginationResponse<GridFSFileInfo>> Get(FileFindCriteria request);
+        Task<PaginationResponse<JbFileInfo>> Get(FileFindCriteria request);
+        Task<GridFSDownloadStream<ObjectId>> OpenStreamByFilename(string filename);
+        Task<JbFileInfo> Upload(Stream stream, string filename, string contentType, JbFileMetadata meta);
     }
 
     public class JellyblogDbFileService : IJellyblogDbFileService
@@ -36,53 +39,60 @@ namespace jb_core_webapi.Services
             }
         }
 
-        //private IMongoCollection<File> _files = null;
-        //protected IMongoCollection<File> Files
-        //{
-        //    get
-        //    {
-        //        if (_files == null)
-        //        {
-        //            _files = this._context.Database.GetCollection<File>("fs.files");
-        //        }
-        //        return _files;
-        //    }
-        //}
-
-        public async Task<PaginationResponse<GridFSFileInfo>> Get(FileFindCriteria request)
+        public async Task<GridFSDownloadStream<ObjectId>> OpenStreamByFilename(string filename)
         {
-            var filter = Builders<GridFSFileInfo>.Filter.Empty;
-
-            using (var cursor = await Bucket.FindAsync(filter))
-            {
-                var items = await cursor.ToListAsync();
-                return new PaginationResponse<GridFSFileInfo>(Items: items, HasMore: false);
-            }
-
-
-            //var filter = JellyblogDbFileService._mapFileFindCriteriaToFilterDefinition(request);
-            //var itemsPerPage = this._config.GetValue<int>("PaginationItemsPerPage");
-            //var limit = itemsPerPage + 1;
-            //var skip = (request.Page - 1) * itemsPerPage;
-            //// List<File> foundDocs;
-            //bool hasMore;
-
-            //var foundDocs = await this.Files.Find(filter)
-            //    .Skip(skip)
-            //    .Limit(limit)
-            //    .ToListAsync();
-            //hasMore = foundDocs.Count > itemsPerPage;
-            //if (foundDocs.Count > itemsPerPage)
-            //{
-            //    foundDocs.RemoveRange(itemsPerPage, foundDocs.Count - itemsPerPage);
-            //}
-
-            //return new PaginationResponse<File>(Items: foundDocs, HasMore: hasMore);
+            return await Bucket.OpenDownloadStreamByNameAsync(filename);
         }
 
-        private static FilterDefinition<File> _mapFileFindCriteriaToFilterDefinition(FileFindCriteria request)
+        public async Task<JbFileInfo> Upload(Stream stream, string fileName, string contentType, JbFileMetadata meta)
         {
-            var builder = Builders<File>.Filter;
+            var id = await Bucket.UploadFromStreamAsync(fileName, stream, new GridFSUploadOptions {
+                ContentType = contentType,
+                Metadata = new BsonDocument(meta.ToDictionary())
+            });
+            var justUploadedFile = await Get(id);
+            return justUploadedFile;
+        }
+
+        public async Task<JbFileInfo> Get(ObjectId id)
+        {
+            var filter = Builders<GridFSFileInfo>.Filter.Eq("_id", id);
+            using (var cursor = await Bucket.FindAsync(filter))
+            {
+                var info = await cursor.FirstOrDefaultAsync();
+                return GridFsFileInfo2File(info);
+            }
+        }
+
+        public async Task<PaginationResponse<JbFileInfo>> Get(FileFindCriteria request)
+        {
+            var filter = _mapFileFindCriteriaToFilterDefinition(request);
+            var itemsPerPage = _config.GetValue<int>("PaginationItemsPerPage");
+            var limit = itemsPerPage + 1;
+            var skip = (request.Page - 1) * itemsPerPage;
+            var options = new GridFSFindOptions
+            {
+                Limit = itemsPerPage + 1,
+                Skip = (request.Page - 1) * itemsPerPage
+            };
+
+            using (var cursor = await Bucket.FindAsync(filter, options))
+            {
+                var items = await cursor.ToListAsync();
+                var hasMore = items.Count > itemsPerPage;
+                if(items.Count > itemsPerPage)
+                {
+                    items.RemoveRange(itemsPerPage, items.Count - itemsPerPage);
+                }
+                // We have to convert to custom model because GridFSFileInfo wouldn't serialize correctly
+                var mappedItems = items.ConvertAll<JbFileInfo>(GridFsFileInfo2File);
+                return new PaginationResponse<JbFileInfo>(Items: mappedItems, HasMore: hasMore);
+            }
+        }
+
+        private static FilterDefinition<GridFSFileInfo> _mapFileFindCriteriaToFilterDefinition(FileFindCriteria request)
+        {
+            var builder = Builders<GridFSFileInfo>.Filter;
             var filter = builder.Empty;
 
             if (!string.IsNullOrEmpty(request.Context))
@@ -111,6 +121,43 @@ namespace jb_core_webapi.Services
             }
 
             return filter;
+        }
+
+        private static JbFileInfo GridFsFileInfo2File(GridFSFileInfo inp)
+        {
+            JbFileInfo result = new JbFileInfo
+            {
+                ChunkSize = inp.ChunkSizeBytes,
+                ContentType = inp.ContentType,
+                Filename = inp.Filename,
+                Id = inp.Id.ToString(),
+                Length = inp.Length,
+                UploadDate = inp.UploadDateTime,
+                Metadata = new JbFileMetadata
+                {
+                    Context = BsonValueToNullableString(inp.Metadata.GetValue("context")),
+                    Description = BsonValueToNullableString(inp.Metadata.GetValue("description")),
+                    Height = BsonValueToNullableString(inp.Metadata.GetValue("height")),
+                    OriginalName = BsonValueToNullableString(inp.Metadata.GetValue("originalName")),
+                    PostId = BsonValueToNullableString(inp.Metadata.GetValue("postId")),
+                    SrcSetTag = BsonValueToNullableString(inp.Metadata.GetValue("srcsetTag")),
+                    Width = BsonValueToNullableString(inp.Metadata.GetValue("width"))
+                }
+            };
+            return result;
+        }
+
+        private static string BsonValueToNullableString(BsonValue inp)
+        {
+            if (inp.IsBsonNull)
+            {
+                return null;
+            }
+            if(inp.IsObjectId)
+            {
+                return inp.AsObjectId.ToString();
+            }
+            return inp.AsString;
         }
     }
 }
