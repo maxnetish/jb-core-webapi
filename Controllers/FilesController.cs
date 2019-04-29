@@ -2,10 +2,10 @@ using jb_core_webapi.Models;
 using jb_core_webapi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
 using System;
 using System.Collections.Generic;
-using System.Dynamic;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -15,6 +15,7 @@ namespace jb_core_webapi.Controllers
     [ApiController]
     public class FilesController : ControllerBase
     {
+        private readonly int _maximumFilesInOneRequest = 8;
         private readonly IJellyblogDbFileService _fileService;
 
         public FilesController(IJellyblogDbFileService fileService)
@@ -22,62 +23,48 @@ namespace jb_core_webapi.Controllers
             this._fileService = fileService;
         }
 
-        // GET api/files
-        // [HttpGet]
-        // [Produces("application/json")]
-        // public ActionResult<PaginationResponse<File>> Get()
-        // {
-        // var l = this._fileService.Get();s
-        // var s = l.ToJson();
-        // return s;
-        // var listOfFiles = this._fileService.Get();
-        // return new PaginationResponse<File>(Items: listOfFiles, HasMore: false);
-        // }
-
+        /**
+         *  returns structure:
+         *  {
+         *      [FieldName1]: [jbFIleInfo1, jbFileInfo2, ...],
+         *      [FieldName2]: [jbFIleInfo3, jbFileInfo4, ...]
+         *      ...
+         *  }
+         */
         [Authorize(Roles = "admin")]
         [Route("upload")]
         [HttpPost]
+        [Produces("application/json")]
         public async Task<IActionResult> Upload()
         {
-            StringValues fileContext;
-            StringValues fileDescription;
 
-
-            if (Request.Form.Files.Count != 1)
+            if (Request.Form.Files.Count == 0 || Request.Form.Files.Count > _maximumFilesInOneRequest)
             {
-                // allow one attachment
+                // allow {1 - 8} attachments
                 return new BadRequestResult();
             }
-            if (!Request.Form.TryGetValue("context", out fileContext))
+            if (!Request.Form.TryGetValue("context", out StringValues fileContext))
             {
-                // not set context - required
+                // not set context - required field
                 return new BadRequestResult();
             }
 
-            var oneUploadFile = Request.Form.Files[0];
-            using (var oneStream = oneUploadFile.OpenReadStream())
-            {
-                var justStored = await _fileService.Upload(
-                    stream: oneStream,
-                    filename: _generateFileName(),
-                    contentType: oneUploadFile.ContentType,
-                    meta: new JbFileMetadata
-                    {
-                        Context = fileContext.ToString(),
-                        Description = Request.Form.TryGetValue("description", out fileDescription) ? fileDescription.ToString() : null,
-                        Height = Request.Form.TryGetValue("height", out fileDescription) ? fileDescription.ToString() : null,
-                        OriginalName = Request.Form.TryGetValue("originalname", out fileDescription) ? fileDescription.ToString() : null,
-                        PostId = Request.Form.TryGetValue("postId", out fileDescription) ? fileDescription.ToString() : null,
-                        SrcSetTag = Request.Form.TryGetValue("srcsetTag", out fileDescription) ? fileDescription.ToString() : null,
-                        Width = Request.Form.TryGetValue("width", out fileDescription) ? fileDescription.ToString() : null
-                    });
-                dynamic result = new ExpandoObject();
-                AddProperty(result, oneUploadFile.Name, new JbFileInfo[] { justStored });
-                return new ObjectResult(result);
-                //return justStored;
-            }
+            var resultMap = new Dictionary<string, List<JbFileInfo>>();
 
-            throw new NotImplementedException();
+            foreach (var oneUploadFile in Request.Form.Files)
+            {
+                using (var oneStream = oneUploadFile.OpenReadStream())
+                {
+                    var justStored = await _fileService.Upload(
+                        stream: oneStream,
+                        filename: _generateFileName(),
+                        contentType: oneUploadFile.ContentType,
+                        meta: _createFileMetadataFromMultipartFormData(Request.Form, oneUploadFile)
+                        );
+                    _addValueToResultMap(resultMap, oneUploadFile.Name, justStored);
+                }
+            }
+            return new ObjectResult(resultMap);
         }
 
         [Authorize(Roles = "admin")]
@@ -102,45 +89,35 @@ namespace jb_core_webapi.Controllers
             return stringBuilder.ToString();
         }
 
-        private static void AddProperty(ExpandoObject expando, string propertyName, object propertyValue)
+        private static JbFileMetadata _createFileMetadataFromMultipartFormData(IFormCollection requestForm, IFormFile requestFile)
         {
-            // ExpandoObject supports IDictionary so we can extend it like this
-            var expandoDict = expando as IDictionary<string, object>;
-            if (expandoDict.ContainsKey(propertyName))
+            return new JbFileMetadata
             {
-                expandoDict[propertyName] = propertyValue;
-            }
-            else
-            {
-                expandoDict.Add(propertyName, propertyValue);
-            }
+                Context = requestForm.TryGetValue("context", out StringValues formElmValue) ? formElmValue.ToString() : null,
+                Description = requestForm.TryGetValue("description", out formElmValue) ? formElmValue.ToString() : null,
+                Height = requestForm.TryGetValue("height", out formElmValue) ? formElmValue.ToString() : null,
+                OriginalName = String.IsNullOrEmpty(requestFile.FileName) ? (requestForm.TryGetValue("originalname", out formElmValue) ? formElmValue.ToString() : null) : requestFile.FileName,
+                PostId = requestForm.TryGetValue("postId", out formElmValue) ? formElmValue.ToString() : null,
+                SrcSetTag = requestForm.TryGetValue("srcsetTag", out formElmValue) ? formElmValue.ToString() : null,
+                Width = requestForm.TryGetValue("width", out formElmValue) ? formElmValue.ToString() : null
+            };
         }
 
-        /*
-                // GET api/values/5
-                [HttpGet("{id}")]
-                public ActionResult<string> Get(int id)
-                {
-                    return "value";
-                }
-
-                // POST api/values
-                [HttpPost]
-                public void Post([FromBody] string value)
-                {
-                }
-
-                // PUT api/values/5
-                [HttpPut("{id}")]
-                public void Put(int id, [FromBody] string value)
-                {
-                }
-
-                // DELETE api/values/5
-                [HttpDelete("{id}")]
-                public void Delete(int id)
-                {
-                }
-                */
+        /**
+         * to produce response object with dynamic properties kind of:
+         * {
+         *      propertyName1: [propertyValue1, propertyValue2, ...],
+         *      propertyName2: [propertyValue3, ...],
+         *      ...
+         * }
+         */ 
+        private static void _addValueToResultMap<TPropValue>(Dictionary<string, List<TPropValue>> resultMap, string propertyName, TPropValue propertyValue)
+        {
+            if(!resultMap.ContainsKey(propertyName))
+            {
+                resultMap.Add(propertyName, new List<TPropValue>());
+            }
+            resultMap[propertyName].Add(propertyValue);
+        }
     }
 }

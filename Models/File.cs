@@ -61,9 +61,8 @@ namespace jb_core_webapi.Models
         [JsonProperty("contentType")]
         public string ContentType { get; set; }
 
-        // TODO: add filling in JellyblogDbFileService
         [JsonProperty("url")]
-        public string Url { get; set; }
+        public string Url => $"/fs/{this.Filename}";
 
         [JsonProperty("metadata")]
         public JbFileMetadata Metadata { get; set; }

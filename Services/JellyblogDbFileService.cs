@@ -11,6 +11,7 @@ namespace jb_core_webapi.Services
     public interface IJellyblogDbFileService
     {
         Task<PaginationResponse<JbFileInfo>> Get(FileFindCriteria request);
+        Task<JbFileInfo> Get(ObjectId id);
         Task<GridFSDownloadStream<ObjectId>> OpenStreamByFilename(string filename);
         Task<JbFileInfo> Upload(Stream stream, string filename, string contentType, JbFileMetadata meta);
     }

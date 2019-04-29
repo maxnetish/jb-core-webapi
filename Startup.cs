@@ -28,6 +28,7 @@ namespace jb_core_webapi
             services.AddSingleton<IJellyblogDbFileService, JellyblogDbFileService>();
             services.AddSingleton<IJellyblogDbUserService, JellyblogDbUserService>();
             services.AddSingleton<IJellybolgDbRefreshTokenService, JellybolgDbRefreshTokenService>();
+            services.AddSingleton<IJellyblogDbPostService, JellyblogDbPostService>();
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
