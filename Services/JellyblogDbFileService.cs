@@ -12,6 +12,7 @@ namespace jb_core_webapi.Services
     {
         Task<PaginationResponse<JbFileInfo>> Get(FileFindCriteria request);
         Task<JbFileInfo> Get(ObjectId id);
+        Task<JbFileInfo> Get(string id);
         Task<GridFSDownloadStream<ObjectId>> OpenStreamByFilename(string filename);
         Task<JbFileInfo> Upload(Stream stream, string filename, string contentType, JbFileMetadata meta);
     }
@@ -63,6 +64,11 @@ namespace jb_core_webapi.Services
                 var info = await cursor.FirstOrDefaultAsync();
                 return GridFsFileInfo2File(info);
             }
+        }
+
+        public async Task<JbFileInfo> Get(string id)
+        {
+            return await Get(ObjectId.Parse(id));
         }
 
         public async Task<PaginationResponse<JbFileInfo>> Get(FileFindCriteria request)

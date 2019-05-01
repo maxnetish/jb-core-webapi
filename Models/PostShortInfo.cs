@@ -1,14 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using MongoDB.Bson;
+﻿using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Bson.Serialization.Serializers;
-using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using MongoDB.Bson.Serialization;
+using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace jb_core_webapi.Models
 {
@@ -41,7 +38,6 @@ namespace jb_core_webapi.Models
 
         [BsonElement("titleImg")]
         [BsonSerializer(typeof(EntityRefSerializer))]
-        //[BsonRepresentation(BsonType.ObjectId)]
         public EntityRef TitleImg { get; set; }
 
         [BsonElement("title")]
@@ -52,22 +48,5 @@ namespace jb_core_webapi.Models
         [BsonElement("brief")]
         [MaxLength(1024)]
         public string Brief { get; set; }
-    }
-
-    public class EntityRefSerializer : SerializerBase<EntityRef>
-    {
-        public override EntityRef Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
-        {
-            var id = context.Reader.ReadObjectId();
-            return new EntityRef
-            {
-                   Id= id.ToString()
-            };
-        }
-
-        public override void Serialize(BsonSerializationContext context, BsonSerializationArgs args, EntityRef value)
-        {
-            context.Writer.WriteObjectId(ObjectId.Parse(value.Id));
-        }
     }
 }

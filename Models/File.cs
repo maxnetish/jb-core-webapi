@@ -41,11 +41,8 @@ namespace jb_core_webapi.Models
     }
 
     // [BsonIgnoreExtraElements]
-    public class JbFileInfo
+    public class JbFileInfo : EntityRef
     {
-
-        public string Id { get; set; }
-
         [JsonProperty("filename")]
         public string Filename { get; set; }
 

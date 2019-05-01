@@ -23,9 +23,9 @@ namespace jb_core_webapi.Controllers
 
         [HttpGet]
         [Authorize(Roles = "admin")]
-        public async Task<ActionResult<PaginationResponse<PostShortInfo>>> GetForAdmin()
+        public async Task<ActionResult<PaginationResponse<PostShortInfoEnriched>>> GetForAdmin([FromQuery]PostFindAdminCriteria criteria = null)
         {
-            return await _postsService.Get();
+            return await _postsService.Get(criteria);
         }
 
     }
